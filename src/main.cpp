@@ -6,7 +6,9 @@
 #include <string>
 #include <unordered_map>
 
-#include "api/memory/Hook.h"
+#include <nise/stub.h>
+#include <memscan.h>
+#include <inlinehook.h>
 #include <cstdio>
 
 namespace fs = std::filesystem;
@@ -17,7 +19,7 @@ namespace fs = std::filesystem;
 JNIEnv *env = nullptr;
 
 #define LOGI(...)                                                              \
-  __android_log_print(ANDROID_LOG_INFO, "LeviLogger", __VA_ARGS__)
+  __android_log_print(ANDROID_LOG_INFO, "ForceCloseOreUI", __VA_ARGS__)
 
 jobject getGlobalContext(JNIEnv *env) {
   jclass activity_thread = env->FindClass("android/app/ActivityThread");
@@ -81,15 +83,27 @@ std::string GetModsFilesPath(JNIEnv *env) {
           package_name / "modules_config");
 }
 
-SKY_AUTO_STATIC_HOOK(
-    Hook1, memory::HookPriority::Normal,
-    std::initializer_list<const char *>(
-        {"? ? ? D1 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? "
-         "91 ? ? ? D5 ? ? ? F9 ? ? ? F8 ? ? ? 39 ? ? ? 34 ? ? ? 12"}),
-    int, void *_this, JavaVM *vm) {
-
+int (*original_h1)(void*, JavaVM*);
+int hooked_h1(void *_this, JavaVM *vm) {
   vm->GetEnv(reinterpret_cast<void **>(&env), JNI_VERSION_1_4);
-  return origin(_this, vm);
+  return original_h1(_this, vm);
+}
+
+hook_handle* hookhandlesiji = nullptr;
+
+void hookJniLoad() {
+    sigscan_handle *scannersiji = sigscan_setup("? ? ? D1 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? 91 ? ? ? D5 ? ? ? F9 ? ? ? F8 ? ? ? 39 ? ? ? 34 ? ? ? 12", "libminecraftpe.so", GPWN_SIGSCAN_XMEM);
+    if(!scannersiji) return;
+    
+    void *jniloadfunc = get_sigscan_result(scannersiji);
+    
+    sigscan_cleanup(scanner);
+    
+    if(jniloadfunc == (void*) -1) return;
+    
+    hook_handle *hooksiji = hook_addr(jniloadfunc, (void*) hooked_h1, (void**)&original_h1, GPWN_AARCH64_MICROHOOK);
+    if(!hooksiji) return;
+    hookhandlesiji = hooksiji;
 }
 
 class OreUIConfig {
@@ -104,15 +118,6 @@ class OreUi {
 public:
   std::unordered_map<std::string, OreUIConfig> mConfigs;
 };
-
-#define OREUI_PATTERN                                                                     \
-     std::initializer_list<const char *>({                                                \
-      "? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 FD 03 00 91 ? ? ? D1 ? ? ? D5 FB 03 00 AA F5 03 07 AA", \
-      "? ? ? D1 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? 91 ? ? ? F9 ? ? ? D5 FB 03 00 AA ? ? ? F9 F5 03 07 AA", \
-      "? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 FD 03 00 91 ? ? ? D1 ? ? ? D5 FA 03 00 AA F6 03 07 AA" \
-  })                                                                                                                    \
-
-namespace {
 
 bool testDirWritable(const std::string &dir) {
   std::error_code _;
@@ -160,9 +165,8 @@ void saveJson(const std::string &path, const nlohmann::json &j) {
   std::fclose(f);
 }
 
-SKY_AUTO_STATIC_HOOK(Hook2, memory::HookPriority::Normal, OREUI_PATTERN, void,
-                     void *a1, void *a2, void *a3, void *a4, void *a5, void *a6,
-                     void *a7, void *a8, void *a9, OreUi &a10, void *a11) {
+void (*original_h2)(void*, void*, void*, void*, void*, void*, void*, void*, void*, OreUi&, void*);
+void hooked_h2(void *a1, void *a2, void *a3, void *a4, void *a5, void *a6, void *a7, void *a8, void *a9, OreUi &a10, void *a11) {
   dirPath = getConfigDir();
   filePath = dirPath + "config.json";
 
@@ -191,7 +195,39 @@ SKY_AUTO_STATIC_HOOK(Hook2, memory::HookPriority::Normal, OREUI_PATTERN, void,
     saveJson(filePath, outputJson);
   }
 
-  origin(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11);
+  original_h2(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11);
 }
 
-} // namespace
+hook_handle* hookhandleloro = nullptr;
+
+void hookOreUI() {
+    sigscan_handle *scanner = sigscan_setup("? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 FD 03 00 91 ? ? ? D1 ? ? ? D5 FB 03 00 AA F5 03 07 AA", "libminecraftpe.so", GPWN_SIGSCAN_XMEM);
+    if(!scanner) {
+        scanner = sigscan_setup("? ? ? D1 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? 91 ? ? ? F9 ? ? ? D5 FB 03 00 AA ? ? ? F9 F5 03 07 AA", "libminecraftpe.so", GPWN_SIGSCAN_XMEM);
+    }
+    if(!scanner) {
+        scanner = sigscan_setup("? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 FD 03 00 91 ? ? ? D1 ? ? ? D5 FA 03 00 AA F6 03 07 AA", "libminecraftpe.so", GPWN_SIGSCAN_XMEM);
+    }
+    if(!scanner) return;
+    
+    void *func = get_sigscan_result(scanner);
+    
+    sigscan_cleanup(scanner);
+    
+    if(func == (void*) -1) return;
+    
+    hook_handle *hookloro = hook_addr(func, (void*) hooked_h2, (void**)&original_h2, GPWN_AARCH64_MICROHOOK);
+    if(!hookloro) return;
+    hookhandleloro = hookloro;
+}
+
+__attribute__((constructor))
+void StartUp() {
+    hookJniLoad();
+    hookOreUI();
+}
+__attribute__((destructor))
+void Shutdown() {
+    if(hookhandlesiji != nullptr) rm_hook(hookhandlesiji);
+    if(hookhandleloro != nullptr) rm_hook(hookhandleloro);
+}
