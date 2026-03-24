@@ -1,30 +1,24 @@
-add_rules("mode.debug", "mode.release")
+set_project("ForceCloseOreUI")
+set_version("1.0.0")
 
-add_repositories("liteldev-repo https://github.com/LiteLDev/xmake-repo.git")
-if is_plat("windows") then
-    add_requires("detours v4.0.1-xmake.1")
-elseif is_plat("android") then   
+set_languages("cxx23")
 
-    add_requires("preloader_android 0.1.13")
-end
-add_requires("nlohmann_json v3.11.3")
+add_rules("mode.release")
+
+add_repositories(
+    "xmake-repo https://github.com/xmake-io/xmake-repo.git"
+)
 
 target("ForceCloseOreUI")
     set_kind("shared")
-    add_files("src/**.cpp")
-    add_includedirs("src")
-    set_languages("c++20")
-    set_strip("all")
-    add_linkdirs("lib")
-    add_packages("nlohmann_json")
-    if is_plat("windows") then
-        add_packages("detours")
-        remove_files("src/api/memory/android/**.cpp","src/api/memory/android/**.h")
-        add_cxflags("/utf-8", "/EHa")
-        add_syslinks("Shell32")
-    elseif is_plat("android") then
-        remove_files("src/api/memory/win/**.cpp","src/api/memory/win/**.h")
-        add_cxflags("-O3")
-        add_packages("preloader_android")
-        add_cxxflags("-DLLVM_TARGETS_TO_BUILD=\"ARM;AArch64;BPF\"")
-    end
+    add_linkdirs("niseAPI/libs/arm64-v8a")
+    add_linkdirs("miniAPI/libs/arm64-v8a")
+    add_links("nise", "log", "miniAPI", "GlossHook")
+
+    add_files("src/*.cpp", "niseAPI/deps/gamepwnage/src/*.c", "niseAPI/deps/gamepwnage/src/**/*.c")
+
+    add_includedirs("miniAPI/include", "niseAPI/include", "niseAPI/deps/gamepwnage/includes", {public = true})
+
+    add_cxflags("-O2", "-fvisibility=hidden", "-ffunction-sections", "-fdata-sections", "-w")
+    add_cflags("-O2", "-fvisibility=hidden", "-ffunction-sections", "-fdata-sections", "-w")
+    add_ldflags("-Wl,--gc-sections,--strip-all", "-s")
