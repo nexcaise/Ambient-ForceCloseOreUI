@@ -97,7 +97,7 @@ void hookJniLoad() {
     
     void *jniloadfunc = get_sigscan_result(scannersiji);
     
-    sigscan_cleanup(scanner);
+    sigscan_cleanup(scannersiji);
     
     if(jniloadfunc == (void*) -1) return;
     
