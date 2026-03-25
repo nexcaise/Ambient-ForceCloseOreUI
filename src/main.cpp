@@ -13,7 +13,7 @@
 
 namespace fs = std::filesystem;
 
-#include "jni.h"
+#include "jni.h"/*
 #include <android/log.h>
 
 JNIEnv *env = nullptr;
@@ -104,7 +104,7 @@ void hookJniLoad() {
     hook_handle *hooksiji = hook_addr(jniloadfunc, (void*) hooked_h1, (void**)&original_h1, GPWN_AARCH64_MICROHOOK);
     if(!hooksiji) return;
     hookhandlesiji = hooksiji;
-}
+}*/
 
 class OreUIConfig {
 public:
@@ -132,15 +132,15 @@ bool testDirWritable(const std::string &dir) {
 }
 
 std::string getConfigDir() {
-  std::string primary = "/sdcard/games/modules_config";
-  if (!env)
+  std::string primary = "/sdcard/Android/media/io.kitsuri.mayape/modules_config";
+  /*if (!env)
     return primary;
   std::string base = GetModsFilesPath(env);
   if (!base.empty()) {
     base += "/ForceCloseOreUI/";
     if (testDirWritable(base))
       return base;
-  }
+  }*/
   if (!primary.empty()) {
     primary += "/ForceCloseOreUI/";
     if (testDirWritable(primary))
@@ -223,11 +223,11 @@ void hookOreUI() {
 
 __attribute__((constructor))
 void StartUp() {
-    hookJniLoad();
+    //hookJniLoad();
     hookOreUI();
 }
 __attribute__((destructor))
 void Shutdown() {
-    if(hookhandlesiji != nullptr) rm_hook(hookhandlesiji);
+    //if(hookhandlesiji != nullptr) rm_hook(hookhandlesiji);
     if(hookhandleloro != nullptr) rm_hook(hookhandleloro);
 }
