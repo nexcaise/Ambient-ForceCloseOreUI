@@ -9,6 +9,7 @@
 #include <miniAPI.h>
 
 using miniAPI::Config;
+using miniAPI::ConfigFile;
 
 class OreUIConfig {
 public:
