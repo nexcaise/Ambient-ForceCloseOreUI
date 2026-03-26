@@ -23,7 +23,8 @@ public:
     std::unordered_map<std::string, OreUIConfig> mConfigs;
 };
 
-static Config cfg("ForceCloseOreUI");
+static Config FConfig("ForceCloseOreUI");
+static ConfigFile cfg = FConfig.load("config.json");
 
 void (*original_h2)(
     void*, void*, void*, void*, void*,
@@ -35,7 +36,6 @@ void hooked_h2(
     void* a6, void* a7, void* a8, void* a9,
     OreUi& ui, void* a11
 ) {
-    cfg.load("config.json");
 
     for (auto& [key, value] : ui.mConfigs) {
         bool state;
