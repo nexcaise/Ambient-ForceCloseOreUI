@@ -8,9 +8,6 @@
 
 #include <miniAPI.h>
 
-using miniAPI::Config;
-using miniAPI::ConfigFile;
-
 class OreUIConfig {
 public:
     void* mUnknown1;
@@ -24,13 +21,26 @@ public:
     std::unordered_map<std::string, OreUIConfig> mConfigs;
 };
 
-static Config FConfig("ForceCloseOreUI");
-static ConfigFile cfg = FConfig.load("config.json");
-
 void (*original_h2)(
     void*, void*, void*, void*, void*,
     void*, void*, void*, void*, OreUi&, void*
 );
+
+nlohmann::json outputJson;
+std::string filePath = "/sdcard/Android/media/io.kitsuri.mayape/modules_config/ForceCloseOreUI/config.json";
+bool updated = false;
+
+void saveJson(const std::string &path, const nlohmann::json &j) {
+  std::filesystem::create_directories(
+      std::filesystem::path(path).parent_path());
+  FILE *f = std::fopen(path.c_str(), "w");
+  if (!f) {
+    throw std::runtime_error(path);
+  }
+  std::string jsonStr = j.dump(4);
+  std::fwrite(jsonStr.data(), 1, jsonStr.size(), f);
+  std::fclose(f);
+}
 
 void hooked_h2(
     void* a1, void* a2, void* a3, void* a4, void* a5,
@@ -38,18 +48,29 @@ void hooked_h2(
     OreUi& ui, void* a11
 ) {
 
-    for (auto& [key, value] : ui.mConfigs) {
-        bool state;
+    if (std::filesystem::exists(filePath)) {
+        std::ifstream inFile(filePath);
+        inFile >> outputJson;
+        inFile.close();
+    }
 
-        if (cfg.has(key)) {
-            state = cfg.get<bool>(key, false);
-        } else {
-            state = false;
-            cfg.set(key, false);
-        }
-
-        value.mUnknown3 = [state]() { return state; };
-        value.mUnknown4 = [state]() { return state; };
+    for (auto &data : a10.mConfigs) {
+    
+      bool value = false;
+      if (outputJson.contains(data.first) &&
+        outputJson[data.first].is_boolean()) {
+        value = outputJson[data.first];
+      } else {
+    
+        outputJson[data.first] = false;
+        updated = true;
+      }
+      data.second.mUnknown3 = [value]() { return value; };
+      data.second.mUnknown4 = [value]() { return value; };
+    }
+    
+    if (updated || !std::filesystem::exists(filePath)) {
+      saveJson(filePath, outputJson);
     }
 
     original_h2(a1, a2, a3, a4, a5, a6, a7, a8, a9, ui, a11);
@@ -61,16 +82,15 @@ void hookOreUI() {
     sigscan_handle* scanner = nullptr;
 
     const char* patterns[] = {
-        "?? ?? ?? A9 ?? ?? ?? A9 ?? ?? ?? A9 ?? ?? ?? A9 ?? ?? ?? A9 ?? ?? ?? A9 FD 03 00 91 ?? ?? ?? D1 ?? ?? ?? D5 FB 03 00 AA F5 03 07 AA",
-
-        "?? ?? ?? D1 ?? ?? ?? A9 ?? ?? ?? A9 ?? ?? ?? A9 ?? ?? ?? A9 ?? ?? ?? A9 ?? ?? ?? A9 ?? ?? ?? 91 ?? ?? ?? F9 ?? ?? ?? D5 FB 03 00 AA ?? ?? ?? F9 F5 03 07 AA",
-
-        "FD 7B BA A9 FC 6F 01 A9 FA 67 02 A9 F8 5F 03 A9 F6 57 04 A9 F4 4F 05 A9 FD 03 00 91 FF C3 18 D1 59 D0 3B D5 FA 03 00 AA F5 03 07 AA"
+      "? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 FD 03 00 91 ? ? ? D1 ? ? ? D5 FA 03 00 AA F5 03 07 AA",
+      "? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 FD 03 00 91 ? ? ? D1 ? ? ? D5 FB 03 00 AA F5 03 07 AA",
+      "? ? ? D1 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? 91 ? ? ? F9 ? ? ? D5 FB 03 00 AA ? ? ? F9 F5 03 07 AA",
+      "? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 FD 03 00 91 ? ? ? D1 ? ? ? D5 FA 03 00 AA F6 03 07 AA"
     };
 
     for (const char* pattern : patterns) {
-        scanner = sigscan_setup(pattern, "libminecraftpe.so", GPWN_SIGSCAN_XMEM);
-        if (!scanner) continue;
+      scanner = sigscan_setup(pattern, "libminecraftpe.so", GPWN_SIGSCAN_XMEM);
+      if (!scanner) continue;
     }
 
     if (!scanner) return;
@@ -81,10 +101,10 @@ void hookOreUI() {
     if (func == (void*)-1) return;
 
     g_hook = hook_addr(
-        func,
-        (void*)hooked_h2,
-        (void**)&original_h2,
-        GPWN_AARCH64_MICROHOOK
+      func,
+      (void*)hooked_h2,
+      (void**)&original_h2,
+      GPWN_AARCH64_MICROHOOK
     );
 }
 
@@ -96,6 +116,6 @@ void StartUp() {
 __attribute__((destructor))
 void Shutdown() {
     if (g_hook) {
-        rm_hook(g_hook);
+      rm_hook(g_hook);
     }
 }
