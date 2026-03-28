@@ -10,24 +10,32 @@
 
 class OreUIConfig {
 public:
-    void* mUnknown1;
-    void* mUnknown2;
-    std::function<bool()> mUnknown3;
-    std::function<bool()> mUnknown4;
+  void *mUnknown1;
+  void *mUnknown2;
+  std::function<bool()> mUnknown3;
+  std::function<bool()> mUnknown4;
 };
 
 class OreUi {
 public:
-    std::unordered_map<std::string, OreUIConfig> mConfigs;
+  std::unordered_map<std::string, OreUIConfig> mConfigs;
 };
 
-void (*original_h2)(
-    void*, void*, void*, void*, void*,
-    void*, void*, void*, void*, OreUi&, void*
-);
+bool testDirWritable(const std::string &dir) {
+  std::error_code _;
+  std::filesystem::create_directories(dir, _);
+  std::string testFile = dir + "._perm_test";
+  std::ofstream ofs(testFile);
+  bool ok = ofs.is_open();
+  ofs.close();
+  if (ok)
+    std::filesystem::remove(testFile, _);
+  return ok;
+}
 
 nlohmann::json outputJson;
-std::string filePath = "/sdcard/Android/media/io.kitsuri.mayape/modules_config/ForceCloseOreUI/config.json";
+std::string dirPath = "";
+std::string filePath = "";
 bool updated = false;
 
 void saveJson(const std::string &path, const nlohmann::json &j) {
@@ -42,38 +50,62 @@ void saveJson(const std::string &path, const nlohmann::json &j) {
   std::fclose(f);
 }
 
+std::string getConfigDir() {
+  std::string primary = "/sdcard/games";
+  std::string base = "/sdcard/Android/media/io.kitsuri.mayape/modules_config";
+  if (!base.empty()) {
+    base += "/ForceCloseOreUI/";
+    if (testDirWritable(base))
+      return base;
+  }
+  if (!primary.empty()) {
+    primary += "/ForceCloseOreUI/";
+    if (testDirWritable(primary))
+      return primary;
+  }
+  return primary;
+}
+
+void (*original_h2)(
+    void*, void*, void*, void*, void*,
+    void*, void*, void*, void*, OreUi&, void*
+);
+
 void hooked_h2(
     void* a1, void* a2, void* a3, void* a4, void* a5,
     void* a6, void* a7, void* a8, void* a9,
     OreUi& a10, void* a11
 ) {
 
-    if (std::filesystem::exists(filePath)) {
-        std::ifstream inFile(filePath);
-        inFile >> outputJson;
-        inFile.close();
-    }
+  dirPath = getConfigDir();
+  filePath = dirPath + "config.json";
 
-    for (auto &data : a10.mConfigs) {
-    
-      bool value = false;
-      if (outputJson.contains(data.first) &&
+  if (std::filesystem::exists(filePath)) {
+    std::ifstream inFile(filePath);
+    inFile >> outputJson;
+    inFile.close();
+  }
+
+  for (auto &data : a10.mConfigs) {
+
+    bool value = false;
+    if (outputJson.contains(data.first) &&
         outputJson[data.first].is_boolean()) {
-        value = outputJson[data.first];
-      } else {
-    
-        outputJson[data.first] = false;
-        updated = true;
-      }
-      data.second.mUnknown3 = [value]() { return value; };
-      data.second.mUnknown4 = [value]() { return value; };
-    }
-    
-    if (updated || !std::filesystem::exists(filePath)) {
-      saveJson(filePath, outputJson);
-    }
+      value = outputJson[data.first];
+    } else {
 
-    original_h2(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11);
+      outputJson[data.first] = false;
+      updated = true;
+    }
+    data.second.mUnknown3 = [value]() { return value; };
+    data.second.mUnknown4 = [value]() { return value; };
+  }
+
+  if (updated || !std::filesystem::exists(filePath)) {
+    saveJson(filePath, outputJson);
+  }
+
+  original_h2(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11);
 }
 
 hook_handle* g_hook = nullptr;
@@ -86,6 +118,7 @@ void hookOreUI() {
       "? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 FD 03 00 91 ? ? ? D1 ? ? ? D5 FB 03 00 AA F5 03 07 AA",
       "? ? ? D1 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? 91 ? ? ? F9 ? ? ? D5 FB 03 00 AA ? ? ? F9 F5 03 07 AA",
       "? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 FD 03 00 91 ? ? ? D1 ? ? ? D5 FA 03 00 AA F6 03 07 AA"
+      "FD 7B BA A9 FC 6F 01 A9 FA 67 02 A9 F8 5F 03 A9 F6 57 04 A9 F4 4F 05 A9 FD 03 00 91 FF C3 18 D1 59 D0 3B D5 FA 03 00 AA F5 03 07 AA"
     };
 
     for (const char* pattern : patterns) {
