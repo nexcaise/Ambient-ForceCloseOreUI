@@ -45,7 +45,7 @@ void saveJson(const std::string &path, const nlohmann::json &j) {
 void hooked_h2(
     void* a1, void* a2, void* a3, void* a4, void* a5,
     void* a6, void* a7, void* a8, void* a9,
-    OreUi& ui, void* a11
+    OreUi& a10, void* a11
 ) {
 
     if (std::filesystem::exists(filePath)) {
