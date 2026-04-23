@@ -1,6 +1,12 @@
-#include <unordered_map>
-#include <string>
+#include <filesystem>
+#include <fstream>
 #include <functional>
+#include <nlohmann/json.hpp>
+#include <set>
+#include <string>
+#include <unordered_map>
+
+#include <cstdio>
 
 #include <memscan.h>
 #include <inlinehook.h>
