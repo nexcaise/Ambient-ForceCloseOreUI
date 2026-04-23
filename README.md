@@ -19,8 +19,7 @@ A handy utility to force close the Minecraft OreUI.
   2. Tap the file and choose to open with Ambient for import.
   3. Configuration file location:
      ```
-     /storage/emulated/0/Android/media/[ambient package name]/modules/ForceCloseOreUI
+     /storage/emulated/0/Android/media/io.kitsuri.mayape/modules/ForceCloseOreUI/config.json
      ```
-     > **Note:** Modified APK files are NOT provided.
 
 > Originally Made by [QYCOTTAGE](https://github.com/qycottage)

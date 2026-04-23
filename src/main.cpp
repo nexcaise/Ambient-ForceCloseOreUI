@@ -55,7 +55,7 @@ void saveJson(const std::string &path, const nlohmann::json &j) {
 
 std::string getConfigDir() {
   std::string primary = "/sdcard/games";
-  std::string base = "/sdcard/Android/media/io.kitsuri.mayape/modules_config";
+  std::string base = "/sdcard/Android/media/io.kitsuri.mayape/modules";
   if (!base.empty()) {
     base += "/ForceCloseOreUI/";
     if (testDirWritable(base))
